@@ -1,166 +1,110 @@
-/****************************************************************************************** 
- *	Chili DirectX Framework Version 16.07.20											  *	
- *	Game.cpp																			  *
- *	Copyright 2016 PlanetChili.net <http://www.planetchili.net>							  *
- *																						  *
- *	This file is part of The Chili DirectX Framework.									  *
- *																						  *
- *	The Chili DirectX Framework is free software: you can redistribute it and/or modify	  *
- *	it under the terms of the GNU General Public License as published by				  *
- *	the Free Software Foundation, either version 3 of the License, or					  *
- *	(at your option) any later version.													  *
- *																						  *
- *	The Chili DirectX Framework is distributed in the hope that it will be useful,		  *
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of						  *
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the						  *
- *	GNU General Public License for more details.										  *
- *																						  *
- *	You should have received a copy of the GNU General Public License					  *
- *	along with The Chili DirectX Framework.  If not, see <http://www.gnu.org/licenses/>.  *
- ******************************************************************************************/
-#include "MainWindow.h"
-#include "Game.h"
-#include "SpriteCodex.h"
+#include "Snake.h"
+#include "Colors.h"
+#include <assert.h>
 
-Game::Game( MainWindow& wnd )
-	:
-	wnd( wnd ),
-	gfx( wnd ),
-	brd( settings,gfx ),
-	rng( std::random_device()() ),
-	snek( {2,2} ),
-	nPoison( settings.GetPoisonAmount() ),
-	nFood( settings.GetFoodAmount() ),
-	snekSpeedupFactor( settings.GetSpeedupRate() )
+Snake::Snake(const Location& loc)
 {
-	for( int i = 0; i < nPoison; i++ )
+	constexpr int nBodyColors = 4;
+	constexpr Color bodyColors[nBodyColors]
 	{
-		brd.SpawnContents( rng,snek,Board::CellContents::Poison );
-	}
-	for( int i = 0; i < nFood; i++ )
+		{10, 100, 32},
+		{10, 130, 48},
+		{18, 160, 48},
+		{10, 130, 48}
+	};
+
+	for (int i = 0; i < nSegmentsMax; i++)
 	{
-		brd.SpawnContents( rng,snek,Board::CellContents::Food );
+		segments[i].InitBody(bodyColors[i % nBodyColors]);
 	}
-	sndTitle.Play( 1.0f,1.0f );
+	segments[0].InitHead(loc);
 }
 
-void Game::Go()
+void Snake::Moveby(Location& delta_loc)
 {
-	gfx.BeginFrame();	
-	UpdateModel();
-	ComposeFrame();
-	gfx.EndFrame();
+	for (int i = nSegments - 1; i > 0; i--)
+	{
+		segments[i].Follow(segments[i - 1]);
+	}
+	segments[0].Moveby(delta_loc);
 }
 
-void Game::UpdateModel()
+void Snake::Grow()
 {
-	const float dt = ft.Mark();
-	
-	if( gameIsStarted )
+	if (nSegments < nSegmentsMax)
 	{
-		if( !gameIsOver )
+		++nSegments;
+	}
+}
+
+void Snake::Draw(Board& brd)
+{
+	for (int i = 0; i < nSegments; i++)
+	{
+		segments[i].Draw(brd);
+	}
+}
+
+Location Snake::GetNextHeadLocation(Location& delta_loc)
+{
+	Location l = segments[0].GetLocation();
+	l.Add(delta_loc);
+	return l;
+}
+
+bool Snake::HasTouchedItself(const Location& self_loc)
+{
+	for (int i = 0; i < nSegments - 1; i++)
+	{
+		if (segments[i].GetLocation() == self_loc)
 		{
-			if( wnd.kbd.KeyIsPressed( VK_UP ) )
-			{
-				const Location new_delta_loc = { 0,-1 };
-				if( delta_loc != -new_delta_loc || snek.GetLength() <= 2 )
-				{
-					delta_loc = new_delta_loc;
-				}
-			}
-			else if( wnd.kbd.KeyIsPressed( VK_DOWN ) )
-			{
-				const Location new_delta_loc = { 0,1 };
-				if( delta_loc != -new_delta_loc || snek.GetLength() <= 2 )
-				{
-					delta_loc = new_delta_loc;
-				}
-			}
-			else if( wnd.kbd.KeyIsPressed( VK_LEFT ) )
-			{
-				const Location new_delta_loc = { -1,0 };
-				if( delta_loc != -new_delta_loc || snek.GetLength() <= 2 )
-				{
-					delta_loc = new_delta_loc;
-				}
-			}
-			else if( wnd.kbd.KeyIsPressed( VK_RIGHT ) )
-			{
-				const Location new_delta_loc = { 1,0 };
-				if( delta_loc != -new_delta_loc || snek.GetLength() <= 2 )
-				{
-					delta_loc = new_delta_loc;
-				}
-			}
-
-			float snekModifiedMovePeriod = snekMovePeriod;
-			if( wnd.kbd.KeyIsPressed( VK_CONTROL ) )
-			{
-				snekModifiedMovePeriod = std::min( snekMovePeriod,snekMovePeriodSpeedup );
-			}
-
-			snekMoveCounter += dt;
-			if( snekMoveCounter >= snekModifiedMovePeriod )
-			{
-				snekMoveCounter -= snekModifiedMovePeriod;
-				const Location next = snek.GetNextHeadLocation( delta_loc );
-				const Board::CellContents contents = brd.IsInsideBoard( next ) ? brd.GetContents( next ) 
-					: Board::CellContents::Empty;
-				if( !brd.IsInsideBoard( next ) ||
-					snek.IsInTileExceptEnd( next ) ||
-					contents == Board::CellContents::Obstacle )
-				{
-					gameIsOver = true;
-					sndFart.Play( rng,1.2f );
-					sndMusic.StopAll();
-				}
-				else if( contents == Board::CellContents::Food )
-				{
-					snek.GrowAndMoveBy( delta_loc );
-					brd.ConsumeContents( next );
-					brd.SpawnContents( rng,snek,Board::CellContents::Obstacle );
-					brd.SpawnContents( rng,snek,Board::CellContents::Food );
-					sfxEat.Play( rng,0.8f );
-				}
-				else if( contents == Board::CellContents::Poison )
-				{
-					snek.MoveBy( delta_loc );
-					brd.ConsumeContents( next );
-					snekMovePeriod = std::max( snekMovePeriod * snekSpeedupFactor,snekMovePeriodMin );
-					sndFart.Play( rng,0.6f );
-				}
-				else
-				{
-					snek.MoveBy( delta_loc );
-					sfxSlither.Play( rng,0.08f );
-				}
-			}
+			return true;
 		}
 	}
-	else
-	{
-		if( wnd.kbd.KeyIsPressed( VK_RETURN ) )
-		{
-			sndMusic.Play( 1.0f,0.6f );
-			gameIsStarted = true;
-		}
-	}
+	return false;
 }
 
-void Game::ComposeFrame()
+bool Snake::HasTouchedGoal(const Location& self_loc)
 {
-	if( gameIsStarted )
+	for (int i = 0; i < nSegments; i++)
 	{
-		snek.Draw( brd );
-		brd.DrawCells();
-		if( gameIsOver )
+		if (segments[i].GetLocation() == self_loc)
 		{
-			SpriteCodex::DrawGameOver( 350,265,gfx );
+			return true;
 		}
-		brd.DrawBorder();
 	}
-	else
-	{
-		SpriteCodex::DrawTitle( 290,225,gfx );
-	}
+	return false;
 }
+
+void Snake::Segment::InitHead(const Location& in_loc)
+{
+	loc = in_loc;
+	c = Snake::headColor;
+}
+
+void Snake::Segment::InitBody(Color c_in)
+{
+	c = c_in;
+}
+
+void Snake::Segment::Moveby(Location& delta_loc)
+{
+	assert(abs(delta_loc.x) + abs(delta_loc.y) == 1);
+	loc.Add(delta_loc);
+}
+
+void Snake::Segment::Follow(const Segment& next)
+{
+	loc = next.loc;
+}
+
+void Snake::Segment::Draw(Board& brd)
+{
+	brd.DrawCell(loc, c);
+}
+
+Location Snake::Segment::GetLocation() const
+{
+	return loc;
+}
+

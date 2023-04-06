@@ -25,6 +25,7 @@
 #include "Graphics.h"
 #include "Board.h"
 #include "Snake.h"
+#include "Goal.h"
 #include <random>
 #include "SoundEffect.h"
 #include "FrameTimer.h"
@@ -47,25 +48,17 @@ private:
 	Graphics gfx;
 	/********************************/
 	/*  User Variables              */
-	GameSettings settings = "settings.txt";
+	std::mt19937 rng;
 	Board brd;
 	Snake snek;
-	Location delta_loc = {1,0};
-	std::mt19937 rng;
-	FrameTimer ft;
-	SoundEffect sfxEat = SoundEffect( { L"Sounds\\Eat.wav" } );
-	SoundEffect sfxSlither = SoundEffect( { L"Sounds\\Slither0.wav",L"Sounds\\Slither1.wav",L"Sounds\\Slither2.wav" } );
-	Sound sndMusic = Sound( L"Sounds\\Music_Loop.wav",Sound::LoopType::AutoFullSound );
-	Sound sndTitle = Sound( L"Sounds\\Title.wav" );
-	SoundEffect sndFart = SoundEffect( { L"Sounds\\Fart.wav" } );
-	static constexpr float snekMovePeriodMin = 0.040f;
-	static constexpr float snekMovePeriodSpeedup = 0.15f;
-	int nPoison;
-	int nFood;
-	float snekMovePeriod = 0.4f;
-	float snekMoveCounter = 0.0f;
-	float snekSpeedupFactor;
-	bool gameIsOver = false;
-	bool gameIsStarted = false;
+	Location delta_loc = { 1,0 };
+	int snekMovePeriod = 20;
+	static constexpr int bigGoalspawn = 180;
+	int snekMoveCounter = 0;
+	int bigGoalCounter = 0;
+	bool isGameOver = false;
+	bool isGameStarted = false;
+	Goal goal;
+	Goal bigGoal;
 	/********************************/
 };
