@@ -1,110 +1,143 @@
-#include "Snake.h"
-#include "Colors.h"
-#include <assert.h>
+/******************************************************************************************
+ *	Chili DirectX Framework Version 16.07.20											  *
+ *	Game.cpp																			  *
+ *	Copyright 2016 PlanetChili.net <http://www.planetchili.net>							  *
+ *																						  *
+ *	This file is part of The Chili DirectX Framework.									  *
+ *																						  *
+ *	The Chili DirectX Framework is free software: you can redistribute it and/or modify	  *
+ *	it under the terms of the GNU General Public License as published by				  *
+ *	the Free Software Foundation, either version 3 of the License, or					  *
+ *	(at your option) any later version.													  *
+ *																						  *
+ *	The Chili DirectX Framework is distributed in the hope that it will be useful,		  *
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of						  *
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the						  *
+ *	GNU General Public License for more details.										  *
+ *																						  *
+ *	You should have received a copy of the GNU General Public License					  *
+ *	along with The Chili DirectX Framework.  If not, see <http://www.gnu.org/licenses/>.  *
+ ******************************************************************************************/
+#include "MainWindow.h"
+#include "Game.h"
+#include "SpriteCodex.h"
 
-Snake::Snake(const Location& loc)
+Game::Game(MainWindow& wnd)
+	:
+	wnd(wnd),
+	gfx(wnd),
+	brd(gfx),
+	rng(std::random_device()()),
+	snek({ 2,2 }),
+	goal(rng, brd, snek),
+	bigGoal(rng, brd, snek)
 {
-	constexpr int nBodyColors = 4;
-	constexpr Color bodyColors[nBodyColors]
-	{
-		{10, 100, 32},
-		{10, 130, 48},
-		{18, 160, 48},
-		{10, 130, 48}
-	};
-
-	for (int i = 0; i < nSegmentsMax; i++)
-	{
-		segments[i].InitBody(bodyColors[i % nBodyColors]);
-	}
-	segments[0].InitHead(loc);
 }
 
-void Snake::Moveby(Location& delta_loc)
+void Game::Go()
 {
-	for (int i = nSegments - 1; i > 0; i--)
-	{
-		segments[i].Follow(segments[i - 1]);
-	}
-	segments[0].Moveby(delta_loc);
+	gfx.BeginFrame();
+	UpdateModel();
+	ComposeFrame();
+	gfx.EndFrame();
 }
 
-void Snake::Grow()
+void Game::UpdateModel()
 {
-	if (nSegments < nSegmentsMax)
+	if (isGameStarted)
 	{
-		++nSegments;
-	}
-}
-
-void Snake::Draw(Board& brd)
-{
-	for (int i = 0; i < nSegments; i++)
-	{
-		segments[i].Draw(brd);
-	}
-}
-
-Location Snake::GetNextHeadLocation(Location& delta_loc)
-{
-	Location l = segments[0].GetLocation();
-	l.Add(delta_loc);
-	return l;
-}
-
-bool Snake::HasTouchedItself(const Location& self_loc)
-{
-	for (int i = 0; i < nSegments - 1; i++)
-	{
-		if (segments[i].GetLocation() == self_loc)
+		if (!isGameOver)
 		{
-			return true;
+			if (wnd.kbd.KeyIsPressed(VK_UP))
+			{
+				delta_loc = { 0, -1 };
+			}
+			if (wnd.kbd.KeyIsPressed(VK_DOWN))
+			{
+				delta_loc = { 0, 1 };
+			}
+			if (wnd.kbd.KeyIsPressed(VK_RIGHT))
+			{
+				delta_loc = { 1, 0 };
+			}
+			if (wnd.kbd.KeyIsPressed(VK_LEFT))
+			{
+				delta_loc = { -1, 0 };
+			}
+
+			++snekMoveCounter;
+			++bigGoalCounter;
+
+			if (snekMoveCounter >= snekMovePeriod)
+			{
+				snekMoveCounter = 0;
+
+				Location next = snek.GetNextHeadLocation(delta_loc);
+
+				if (!(brd.isInsideBoard(next)) || snek.HasTouchedItself(next))
+				{
+					isGameOver = true;
+				}
+				else
+				{
+					bool isEaten = (next == goal.GetLocation());
+					if (isEaten)
+					{
+						snek.Grow();
+					}
+					snek.Moveby(delta_loc);
+
+					if (isEaten)
+					{
+						goal.Respawn(rng, brd, snek);
+					}
+
+					if (bigGoalCounter >= bigGoalspawn)
+					{
+						bool isBigGoalEaten = (next == bigGoal.BigGGetLocation());
+
+						if (isBigGoalEaten)
+						{
+							bigGoal.Respawn(rng, brd, snek);
+
+							if (snekMovePeriod >= 4)
+							{
+								snekMovePeriod -= 2;
+							}
+							else
+							{
+								snekMovePeriod = 2;
+							}
+
+							bigGoalCounter = 0;
+						}
+					}
+				}
+			}
 		}
 	}
-	return false;
-}
-
-bool Snake::HasTouchedGoal(const Location& self_loc)
-{
-	for (int i = 0; i < nSegments; i++)
+	else
 	{
-		if (segments[i].GetLocation() == self_loc)
-		{
-			return true;
-		}
+		isGameStarted = wnd.kbd.KeyIsPressed(VK_RETURN);
 	}
-	return false;
 }
 
-void Snake::Segment::InitHead(const Location& in_loc)
+void Game::ComposeFrame()
 {
-	loc = in_loc;
-	c = Snake::headColor;
-}
+	if (!isGameStarted)
+	{
+		SpriteCodex::DrawTitle(200, 200, gfx);
+	}
+	snek.Draw(brd);
+	goal.Draw(brd, goal.GetLocation(), goal.GetGoalColor());
 
-void Snake::Segment::InitBody(Color c_in)
-{
-	c = c_in;
-}
+	if (bigGoalCounter >= bigGoalspawn)
+	{
+		bigGoal.Draw(brd, bigGoal.BigGGetLocation(), bigGoal.GetBigGoalColor());
+	}
 
-void Snake::Segment::Moveby(Location& delta_loc)
-{
-	assert(abs(delta_loc.x) + abs(delta_loc.y) == 1);
-	loc.Add(delta_loc);
+	if (isGameOver)
+	{
+		SpriteCodex::DrawGameOver(300, 400, gfx);
+	}
 }
-
-void Snake::Segment::Follow(const Segment& next)
-{
-	loc = next.loc;
-}
-
-void Snake::Segment::Draw(Board& brd)
-{
-	brd.DrawCell(loc, c);
-}
-
-Location Snake::Segment::GetLocation() const
-{
-	return loc;
-}
-
