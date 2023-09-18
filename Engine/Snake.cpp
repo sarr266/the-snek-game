@@ -76,6 +76,18 @@ bool Snake::HasTouchedGoal(const Location& self_loc)
 	return false;
 }
 
+bool Snake::IsInTile(const Location& target) const
+{
+	for (const auto& s : segments)
+	{
+		if (s.GetLocation() == target)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void Snake::Segment::InitHead(const Location& in_loc)
 {
 	loc = in_loc;

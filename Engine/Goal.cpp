@@ -38,7 +38,7 @@ void Goal::Draw(Board& brd, Location& loc, Color c) const
 }
 
 
-Location& Goal::GetLocation()
+Location& Goal::GetLocation() 
 {
 	return loc;
 }

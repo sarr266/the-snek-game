@@ -74,7 +74,7 @@ void Game::UpdateModel()
 
 				Location next = snek.GetNextHeadLocation(delta_loc);
 
-				if (!(brd.isInsideBoard(next)) || snek.HasTouchedItself(next))
+				if (!(brd.isInsideBoard(next)) || snek.HasTouchedItself(next) || brd.checkForObstacle(next))
 				{
 					isGameOver = true;
 				}
@@ -84,13 +84,10 @@ void Game::UpdateModel()
 					if (isEaten)
 					{
 						snek.Grow();
+						goal.Respawn(rng, brd, snek);
+						brd.spawnObstacle(rng, snek, goal);
 					}
 					snek.Moveby(delta_loc);
-
-					if (isEaten)
-					{
-						goal.Respawn(rng, brd, snek);
-					}
 
 					if (bigGoalCounter >= bigGoalspawn)
 					{
@@ -130,6 +127,7 @@ void Game::ComposeFrame()
 	}
 	snek.Draw(brd);
 	goal.Draw(brd, goal.GetLocation(), goal.GetGoalColor());
+	brd.drawObstacles();
 
 	if (bigGoalCounter >= bigGoalspawn)
 	{

@@ -28,6 +28,7 @@ public:
 	Location GetNextHeadLocation(Location& delta_loc);
 	bool HasTouchedItself(const Location& self_loc);
 	bool HasTouchedGoal(const Location& self_loc);
+	bool IsInTile(const Location& target) const;
 private:
 	static constexpr Color headColor = Colors::Magenta;
 	static constexpr int nSegmentsMax = 100; //max no of segments that we can have
