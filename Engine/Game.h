@@ -53,6 +53,7 @@ private:
 	Snake snek;
 	Location delta_loc = { 1,0 };
 	int snekMovePeriod = 20;
+	static constexpr int snekMovePeriodSpeedup = 5;
 	static constexpr int bigGoalspawn = 180;
 	int snekMoveCounter = 0;
 	int bigGoalCounter = 0;

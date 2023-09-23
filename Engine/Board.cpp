@@ -46,11 +46,11 @@ void Board::spawnObstacle(std::mt19937& rng, const Snake& snake, Goal& goal)
 	{
 		newLoc.x = xDist(rng);
 		newLoc.y = yDist(rng);
-	} while (snake.IsInTile(newLoc) || checkForObstacle(newLoc) || goal.GetLocation() == newLoc);
+	} while (snake.IsInTile(newLoc) || checkForObstacle(newLoc) || goal.GetLocation() == newLoc || goal.BigGGetLocation() == newLoc);
 
 	hasObstacle[newLoc.y * width + newLoc.x] = true;
-
 }
+
 
 void Board::drawObstacles()
 {

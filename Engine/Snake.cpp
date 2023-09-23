@@ -54,7 +54,7 @@ Location Snake::GetNextHeadLocation(Location& delta_loc)
 
 bool Snake::HasTouchedItself(const Location& self_loc)
 {
-	for (int i = 0; i < nSegments - 1; i++)
+	for (int i = 1; i < nSegments; i++)
 	{
 		if (segments[i].GetLocation() == self_loc)
 		{

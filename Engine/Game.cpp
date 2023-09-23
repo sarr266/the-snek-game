@@ -50,27 +50,45 @@ void Game::UpdateModel()
 		{
 			if (wnd.kbd.KeyIsPressed(VK_UP))
 			{
-				delta_loc = { 0, -1 };
+				if (delta_loc.y != 1) // Prevents the snake from moving up if it's currently moving down
+				{
+					delta_loc = { 0, -1 };
+				}
 			}
 			if (wnd.kbd.KeyIsPressed(VK_DOWN))
 			{
-				delta_loc = { 0, 1 };
+				if (delta_loc.y != -1) // Prevents the snake from moving down if it's currently moving up
+				{
+					delta_loc = { 0, 1 };
+				}
 			}
 			if (wnd.kbd.KeyIsPressed(VK_RIGHT))
 			{
-				delta_loc = { 1, 0 };
+				if (delta_loc.x != -1) // Prevents the snake from moving right if it's currently moving left
+				{
+					delta_loc = { 1, 0 };
+				}
 			}
 			if (wnd.kbd.KeyIsPressed(VK_LEFT))
 			{
-				delta_loc = { -1, 0 };
+				if (delta_loc.x != 1) // Prevents the snake from moving left if it's currently moving right
+				{
+					delta_loc = { -1, 0 };
+				}
+			}
+
+			int snekModifiedMovePeriod = snekMovePeriod;
+			if (wnd.kbd.KeyIsPressed(VK_CONTROL))
+			{
+				snekModifiedMovePeriod = std::min(snekMovePeriod, snekMovePeriodSpeedup);
 			}
 
 			++snekMoveCounter;
 			++bigGoalCounter;
 
-			if (snekMoveCounter >= snekMovePeriod)
+			if (snekMoveCounter >= snekModifiedMovePeriod)
 			{
-				snekMoveCounter = 0;
+				snekMoveCounter -= snekModifiedMovePeriod;
 
 				Location next = snek.GetNextHeadLocation(delta_loc);
 
